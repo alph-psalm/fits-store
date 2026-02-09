@@ -1,0 +1,1530 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fast-Peel — Refined Lookbook (Enhanced)</title>
+  
+  <!-- SEO & Meta Enhancements -->
+  <meta name="description" content="Interactive scroll-based fashion lookbook with innovative peel effect">
+  <meta property="og:title" content="Fast-Peel — Refined Lookbook">
+  <meta property="og:description" content="Interactive scroll-based fashion lookbook with innovative peel effect">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Fast-Peel Lookbook",
+    "description": "Interactive fashion lookbook experience with innovative peel scrolling",
+    "creator": {
+      "@type": "Organization",
+      "name": "Fast-Peel Studio"
+    }
+  }
+  </script>
+
+  <style>
+    /* ================= Theme variables & palettes ================= */
+    :root{
+      --bg: #000;
+      --font: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      --content-width: 720px;
+      --transition: 420ms cubic-bezier(.2,.9,.25,1);
+
+      /* semantic colors (default brand palette) */
+      --primary-900: #001029;
+      --primary-700: #012169;
+      --accent: #ffd140;
+      --muted: rgba(255,255,255,0.06);
+      --text-dark: #0b1220;
+      --text-light: #fff;
+    }
+
+    /* Neon palette */
+    .palette--neon{
+      --primary-900: #050014;
+      --primary-700: #22004d;
+      --accent: #00f5a0;
+      --muted: rgba(0,255,200,0.06);
+      --text-dark: #071018;
+      --text-light: #fcfffe;
+    }
+
+    /* Pastel palette */
+    .palette--pastel{
+      --primary-900: #fff7fb;
+      --primary-700: #ffeff5;
+      --accent: #ff7aa2;
+      --muted: rgba(10,10,10,0.04);
+      --text-dark: #1b1b25;
+      --text-light: #0b0b0b;
+    }
+
+    /* Monochrome palette */
+    .palette--mono{
+      --primary-900: #0f1724;
+      --primary-700: #1a1f26;
+      --accent: #bdbdbd;
+      --muted: rgba(255,255,255,0.03);
+      --text-dark: #0b0b0b;
+      --text-light: #f6f6f6;
+    }
+
+    /* ================= Base layout ================= */
+    html,body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
+      color:var(--text-light);
+      font-family: var(--font);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      scroll-behavior: smooth;
+      overflow-y: auto;
+      overflow-x: hidden;
+      width: 100%;
+    }
+
+    /* Accessibility: Skip to content */
+    .skip-to-content {
+      position: absolute;
+      top: -40px;
+      left: 0;
+      background: var(--accent);
+      color: var(--text-dark);
+      padding: 8px 16px;
+      text-decoration: none;
+      border-radius: 0 0 4px 0;
+      font-weight: 700;
+      z-index: 9999;
+    }
+    .skip-to-content:focus {
+      top: 0;
+    }
+
+    /* Screen reader only */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      
+      .section, .content, .peel-path {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+
+    /* Canvas background sits behind sticky sections */
+    #bg-canvas{
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: .16;
+      transition: opacity 420ms ease;
+      will-change: transform;
+    }
+
+    /* Container to ensure sections stack above canvas */
+    main { position: relative; z-index: 10; }
+
+    /* Quick-peel sticky technique */
+    .section{
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: visible;
+      transition: transform var(--transition), box-shadow var(--transition), filter var(--transition);
+      will-change: transform;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      box-shadow: 0 -18px 40px rgba(0,0,0,0.35);
+      isolation: isolate;
+      contain: layout style paint;
+      transform: translate3d(0, 0, 0); /* GPU acceleration */
+    }
+
+    /* Performance optimized transitions */
+    @media (max-width: 760px) {
+      .section {
+        transition: transform 0.3s ease;
+      }
+    }
+
+    /* Peel SVG overlay - sits above the section background but behind content */
+    .section .peel-svg{
+      position: absolute;
+      top: -14vh;
+      left: 0;
+      width: 100%;
+      height: 28vh;
+      pointer-events: none;
+      z-index: 2;
+      transform-origin: 50% 100%;
+      opacity: .98;
+      mix-blend-mode: normal;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,0.25));
+    }
+
+    /* Section inner content (above peel) */
+    .content{
+      padding: 36px;
+      max-width: var(--content-width);
+      width: calc(100% - 80px);
+      box-sizing: border-box;
+      transform: translateY(8px) scale(.995);
+      opacity: .98;
+      transition: transform var(--transition), opacity var(--transition);
+      position: relative;
+      z-index: 6;
+    }
+
+    /* Visually active section */
+    .section.active{
+      transform: perspective(900px) translateZ(0) rotateX(0deg) scale(1.0);
+      box-shadow: 0 -26px 60px rgba(0,0,0,0.45);
+    }
+    .section.active .content{
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+    .section:not(.active){
+      transform: perspective(900px) translateZ(-16px) rotateX(3deg) scale(.994);
+      filter: saturate(.93) brightness(.96);
+    }
+
+    /* Typography */
+    h1{
+      font-size: clamp(28px, 6.5vw, 56px);
+      margin: 0 0 10px;
+      line-height: 1;
+      letter-spacing: -1px;
+      font-weight: 800;
+      color: inherit;
+    }
+    h2 {
+      font-size: clamp(20px, 4vw, 32px);
+      margin: 0 0 20px;
+      line-height: 1.2;
+      font-weight: 700;
+      color: inherit;
+    }
+    p{
+      margin: 0;
+      font-size: clamp(12px, 1.6vw, 16px);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: .95;
+      font-weight: 700;
+    }
+
+    /* Product card with loading state */
+    .product-box{
+      margin: 18px auto 6px;
+      width: 260px;
+      height: 320px;
+      border-radius: 14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:1px;
+      font-size: 14px;
+      padding: 24px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+      border: 2px solid rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Hoodies Gallery Grid */
+    .hoodies-gallery {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 30px 0;
+    }
+    
+    .hoodie-item {
+      width: 180px;
+      height: 220px;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.7);
+    }
+    
+    .hoodie-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    }
+    
+    .hoodie-image {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 11px;
+      line-height: 1.3;
+      text-align: center;
+      padding: 15px;
+      box-sizing: border-box;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Individual hoodie styles */
+    .hoodie-1 {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.5px;
+    }
+    
+    .hoodie-2 {
+      background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+      color: #e94560;
+      font-family: 'Arial Black', sans-serif;
+      text-transform: uppercase;
+    }
+    
+    .hoodie-3 {
+      background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+      color: #f0f0f0;
+      font-family: Georgia, serif;
+      font-style: italic;
+    }
+    
+    .hoodie-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+
+    .product-box.loading {
+      background: linear-gradient(90deg, 
+        var(--muted) 25%, 
+        rgba(255,255,255,0.1) 50%, 
+        var(--muted) 75%
+      );
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+
+    .product-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .product-box img.loaded {
+      opacity: 1;
+    }
+
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .buy-btn{
+      margin-top: 20px;
+      padding: 12px 28px;
+      border-radius: 30px;
+      border: 2px solid currentColor;
+      background: transparent;
+      color: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: .6px;
+      transition: transform 220ms ease, box-shadow 220ms ease, background 220ms ease;
+      min-height: 44px;
+      min-width: 44px;
+    }
+    .buy-btn:hover{ 
+      transform: translateY(-4px); 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45); 
+    }
+    .buy-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .eyebrow{ 
+      font-size: 12px; 
+      letter-spacing: 2px; 
+      opacity:.95; 
+      font-weight:800; 
+      text-transform:uppercase; 
+      margin-bottom:8px; 
+      color:inherit; 
+    }
+
+    /* ================= Creative section color stories (using variables) ================= */
+    .s1{ 
+      background: linear-gradient(180deg, var(--primary-900) 0%, var(--primary-700) 60%); 
+      color: var(--text-light); 
+    }
+    .s1 .peel-fill{ fill: radial-gradient; }
+
+    .s2{ 
+      background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 60%); 
+      color: #000 !important; /* Improved contrast */
+    }
+    .s3{ 
+      background: linear-gradient(135deg, var(--accent) 10%, #ffb347 75%); 
+      color: #000 !important; 
+    }
+    .s4{ 
+      background: linear-gradient(180deg, #efe6dc 0%, #e6e0d9 60%); 
+      color: #000 !important; 
+    }
+    .s5{ 
+      background: linear-gradient(180deg, #0070e0 0%, #0048b8 60%); 
+      color: var(--text-light); 
+    }
+    .s6{ 
+      background: linear-gradient(180deg, #161616 0%, #1a1a1a 60%); 
+      color: var(--text-light); 
+    }
+    .s7{ 
+      background: linear-gradient(135deg, #fff 0%, #f8f8f8 60%); 
+      color: #000 !important; 
+    }
+    .s8{ 
+      background: linear-gradient(120deg,#ff7aa2 0%, #ffb3d1 60%); 
+      color: #000 !important; 
+    }
+    .s9{ 
+      background: linear-gradient(165deg,#20c997 0%, #007a5a 60%); 
+      color: #000 !important; 
+    }
+    .s10{ 
+      background: linear-gradient(120deg,#6e00ff 0%, #1b2cff 60%); 
+      color: var(--text-light); 
+    }
+    .s11{ 
+      background: linear-gradient(120deg,#ffb86b 0%, #ff6b6b 60%); 
+      color: #000 !important; 
+    }
+    .s12{ 
+      background: linear-gradient(180deg,#0f1724 0%, #001018 60%); 
+      color: var(--text-light); 
+    }
+
+    /* ================= Peel SVG subtle animation ================= */
+    .peel-path{
+      transform-origin: 50% 100%;
+      animation: peelFloat 6s ease-in-out infinite;
+      opacity: 0.98;
+    }
+    @keyframes peelFloat{
+      0% { transform: translateY(0px) rotate(0.0deg); }
+      25% { transform: translateY(-6px) rotate(-0.2deg); }
+      50% { transform: translateY(0px) rotate(0.0deg); }
+      75% { transform: translateY(6px) rotate(0.2deg); }
+      100% { transform: translateY(0px) rotate(0.0deg); }
+    }
+
+    /* blend & stroke styles for peel */
+    .peel-stroke{ fill: transparent; stroke: rgba(255,255,255,0.06); stroke-width: 2; }
+    .peel-fill{
+      fill: url(#peelGradient);
+      opacity: 0.95;
+      mix-blend-mode: normal;
+    }
+
+    /* ================= Palette switcher UI ================= */
+    .palette-switcher{
+      position: fixed;
+      top: 18px;
+      left: 20px;
+      z-index: 1201;
+      display:flex;
+      gap:8px;
+      background: rgba(0,0,0,0.28);
+      padding:8px;
+      border-radius:12px;
+      backdrop-filter: blur(6px);
+      align-items:center;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.36);
+    }
+    
+    /* Fallback for browsers without backdrop-filter */
+    .no-backdrop .palette-switcher {
+      background: rgba(0,0,0,0.8);
+    }
+    
+    .palette-switcher button{
+      min-width: 44px;
+      min-height: 32px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      padding:6px 10px;
+      font-weight:700;
+      font-size:12px;
+    }
+    .palette-switcher .active{ 
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35); 
+      transform: translateY(-2px); 
+    }
+
+    /* Progress bar right side */
+    .progress-wrap{
+      position: fixed;
+      top: 18px;
+      right: 20px;
+      width: 10px;
+      height: calc(100vh - 36px);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      z-index: 1200;
+      pointer-events: none;
+    }
+    .progress{
+      width: 4px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+      border-radius: 6px;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+    .progress > i{
+      position: absolute;
+      left:0; top:0;
+      width:100%;
+      height:0%;
+      background: linear-gradient(180deg, var(--accent), #fff5b2);
+      border-radius:6px;
+      transition: height 420ms ease;
+      pointer-events:auto;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--muted);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ================ Modal / Lightbox ================ */
+    .modal{
+      position: fixed;
+      inset:0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1300;
+      background: linear-gradient(180deg, rgba(2,6,23,0.7), rgba(2,6,23,0.85));
+      padding: 28px;
+    }
+    .modal.open{ 
+      display:flex; 
+    }
+    .modal-card{
+      width: min(880px, 96%);
+      max-height: 86vh;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: 14px;
+      padding: 28px;
+      overflow:auto;
+      border: 1px solid rgba(255,255,255,0.04);
+      box-shadow: 0 30px 70px rgba(0,0,0,0.6);
+      color: var(--text-light);
+    }
+    .modal .close{
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      background: transparent;
+      border: 0;
+      color: var(--text-light);
+      font-weight: 900;
+      font-size: 18px;
+      cursor: pointer;
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal .meta{ 
+      display:flex; 
+      gap: 18px; 
+      align-items:center; 
+      margin-bottom:12px; 
+    }
+    .modal .meta .thumb{ 
+      width:140px; 
+      height:180px; 
+      border-radius: 10px; 
+      background: rgba(255,255,255,0.03); 
+      display:flex; 
+      align-items:center; 
+      justify-content:center; 
+      font-weight:900; 
+      text-transform:uppercase; 
+      letter-spacing:1px; 
+    }
+    
+    /* Social sharing buttons in modal */
+    .social-share {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .social-share button {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: var(--text-light);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s ease;
+    }
+    
+    .social-share button:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Print styles */
+    @media print {
+      .section { 
+        position: static !important; 
+        height: auto !important; 
+        min-height: 100vh !important;
+        page-break-inside: avoid;
+      }
+      .palette-switcher, 
+      .progress-wrap, 
+      .modal, 
+      .buy-btn,
+      .peel-svg,
+      #bg-canvas,
+      .loading-overlay {
+        display: none !important;
+      }
+      .content {
+        transform: none !important;
+        opacity: 1 !important;
+      }
+    }
+
+    /* Responsive tweaks */
+    @media (max-width:760px){
+      .product-box{ 
+        width: 190px; 
+        height: 220px; 
+        border-radius:12px; 
+      }
+      .hoodies-gallery {
+        flex-direction: column;
+        align-items: center;
+      }
+      .hoodie-item {
+        width: 160px;
+        height: 200px;
+      }
+      .content{ 
+        padding: 28px; 
+      }
+      .progress-wrap{ 
+        display:none; 
+      }
+      .palette-switcher{ 
+        left: 12px; 
+        top: 12px; 
+        padding:6px; 
+        gap:6px; 
+      }
+      .peel-svg { 
+        display: none; 
+      }
+      .modal .meta {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      /* CSS Scroll Snap as fallback */
+      main {
+        scroll-snap-type: y mandatory;
+      }
+      .section {
+        scroll-snap-align: start;
+      }
+    }
+  </style>
+</head>
+<body class="palette--neon">
+  <!-- Accessibility: Skip to main content -->
+  <a href="#main-content" class="skip-to-content">Skip to main content</a>
+  
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loading">
+    <div class="loading-spinner"></div>
+  </div>
+  
+  <!-- Canvas for parallax background visuals -->
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+  <!-- Palette switcher (three palettes: brand/default, neon, pastel, mono) -->
+  <div class="palette-switcher" role="toolbar" aria-label="Color palette switcher">
+    <button id="btn-default" class="active" title="Brand">Brand</button>
+    <button id="btn-neon" title="Neon">Neon</button>
+    <button id="btn-pastel" title="Pastel">Pastel</button>
+    <button id="btn-mono" title="Mono">Mono</button>
+  </div>
+
+  <!-- Progress indicator -->
+  <div class="progress-wrap" aria-hidden="true">
+    <div class="progress"><i></i></div>
+  </div>
+  
+  <!-- ARIA live region for dynamic content -->
+  <div aria-live="polite" aria-atomic="true" class="sr-only" id="aria-live">
+    Section activated
+  </div>
+
+  <main id="main-content">
+    <!-- Section template with animated peel SVG and content -->
+    <section class="section s1" id="s-hero" aria-label="Hero section">
+      <!-- Peel SVG: a curved "paper" edge that animates subtly -->
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="peelGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.06)"></stop>
+            <stop offset="100%" stop-color="rgba(255,255,255,0.01)"></stop>
+          </linearGradient>
+        </defs>
+        <path class="peel-path peel-fill" d="M0,220 C200,160 400,200 600,180 C800,160 1000,200 1200,180 C1400,160 1600,200 1600,200 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C200,160 400,200 600,180 C800,160 1000,200 1200,180 C1400,160 1600,200" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">Late 2026 — Lookbook Drop</p>
+        <h1>THE LOOKBOOK — FAST PEEL</h1>
+        <p style="margin-top:12px; font-weight:700; opacity:.95">A staged peel experience: scroll to reveal the collection, one card at a time.</p>
+      </div>
+    </section>
+
+    <section class="section s2" id="s-hoodies" aria-label="Hoodies collection">
+      <div class="content">
+        <p class="eyebrow">01</p>
+        <h1>Hoodies — Heavy Fleece</h1>
+        
+        <!-- Hoodies Gallery Grid -->
+        <div class="hoodies-gallery">
+          <div class="hoodie-item">
+            <div class="hoodie-image hoodie-1">
+              FROM<br>THE RIVER TO<br>THE SEA
+              <div class="hoodie-label">River Sea Hoodie</div>
+            </div>
+          </div>
+          
+          <div class="hoodie-item">
+            <div class="hoodie-image hoodie-2">
+              New<br>York<br><br>Life is like a jigsaw<br>puzzle, no need to<br>waste time putting<br><br>TOMORROW<br>FAR<br><br>people and things<br>inappropriate<br>together
+              <div class="hoodie-label">Jigsaw Puzzle Hoodie</div>
+            </div>
+          </div>
+          
+          <div class="hoodie-item">
+            <div class="hoodie-image hoodie-3">
+              heaven<br>pardon me<br>cried edmon<br><br>knees<br>ebore<br>hisfather
+              <div class="hoodie-label">Literary Hoodie</div>
+            </div>
+          </div>
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 14px; text-transform: none; letter-spacing: 0.5px; opacity: 0.9;">
+          Limited edition graphic hoodies featuring unique text designs. Heavy 420gsm fleece, relaxed fit.
+        </p>
+
+        <button class="buy-btn" data-prod="hoodie" aria-haspopup="dialog" aria-label="View Mason Heavy Fleece Hoodie">View Collection</button>
+      </div>
+    </section>
+
+    <section class="section s3" id="s-accessories" aria-label="Accessories">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C260,170 420,210 620,180 C820,150 980,210 1200,170 C1400,130 1600,210 1600,210 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C260,170 420,210 620,180 C820,150 980,210 1200,170 C1400,130 1600,210" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">02</p>
+        <h1>Accessories — Canvas & Leather</h1>
+        <div class="product-box">Canvas Tote + Leather Tag</div>
+        <button class="buy-btn" data-prod="tote" aria-haspopup="dialog" aria-label="View Canvas Tote and Leather Tag">View Item</button>
+      </div>
+    </section>
+
+    <section class="section s4" id="s-headwear" aria-label="Headwear">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C180,150 420,200 640,180 C860,160 1100,210 1300,180 C1500,150 1600,200 1600,200 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C180,150 420,200 640,180 C860,160 1100,210 1300,180 C1500,150 1600,200" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">03</p>
+        <h1>Headwear — Ribbed Beanie</h1>
+        <div class="product-box">Ribbed Beanie</div>
+        <button class="buy-btn" data-prod="beanie" aria-haspopup="dialog" aria-label="View Ribbed Beanie">View Item</button>
+      </div>
+    </section>
+
+    <section class="section s5" id="s-outerwear" aria-label="Outerwear">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C200,170 420,200 640,180 C860,160 1060,200 1260,180 C1460,160 1600,195 1600,195 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C200,170 420,200 640,180 C860,160 1060,200 1260,180 C1460,160 1600,195" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">04</p>
+        <h1>Outerwear — Shell Jacket</h1>
+        <div class="product-box">Technical Shell</div>
+        <button class="buy-btn" data-prod="jacket" aria-haspopup="dialog" aria-label="View Technical Shell Jacket">View Item</button>
+      </div>
+    </section>
+
+    <section class="section s6" id="s-footwear" aria-label="Footwear">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C220,150 420,200 640,180 C860,160 1060,200 1260,180 C1460,160 1600,190 1600,190 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C220,150 420,200 640,180 C860,160 1060,200 1260,180 C1460,160 1600,190" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">05</p>
+        <h1>Footwear — Studio Slides</h1>
+        <div class="product-box">Minimal Studio Slides</div>
+        <button class="buy-btn" data-prod="slides" aria-haspopup="dialog" aria-label="View Minimal Studio Slides">View Item</button>
+      </div>
+    </section>
+
+    <section class="section s7" id="s-archive" aria-label="Archive">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C160,180 360,155 560,185 C760,215 980,160 1200,190 C1400,220 1600,170 1600,170 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C160,180 360,155 560,185 C760,215 980,160 1200,190 C1400,220 1600,170" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">06</p>
+        <h1>Archive — Reference Vault</h1>
+        <p style="margin-top:12px; font-weight:700; opacity:.95">Any docs required will be availed via the Selection Committee portal.</p>
+        <button class="buy-btn" style="background:#000;color:#fff;border:none" data-prod="waitlist" aria-haspopup="dialog" aria-label="Join Waitlist for Archive Access">Join Waitlist</button>
+      </div>
+    </section>
+
+    <section class="section s8" id="s-limited" aria-label="Limited">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C260,170 420,210 620,180 C820,150 980,210 1200,170 C1400,130 1600,210 1600,210 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C260,170 420,210 620,180 C820,150 980,210 1200,170 C1400,130 1600,210" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">07</p>
+        <h1>Limited — Capsule Drops</h1>
+        <div class="product-box">One-off Capsule</div>
+        <button class="buy-btn" data-prod="capsule" aria-haspopup="dialog" aria-label="View Limited Capsule Drops">View Item</button>
+      </div>
+    </section>
+
+    <section class="section s9" id="s-collab" aria-label="Collab">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C200,130 420,190 640,150 C860,110 1100,200 1300,175 C1500,150 1600,200 1600,200 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C200,130 420,190 640,150 C860,110 1100,200 1300,175 C1500,150 1600,200" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">08</p>
+        <h1>Collab — Studio x Guest</h1>
+        <div class="product-box">Artist Collab</div>
+        <button class="buy-btn" data-prod="collab" aria-haspopup="dialog" aria-label="Discover Studio Collaboration">Discover</button>
+      </div>
+    </section>
+
+    <section class="section s10" id="s-lookbook-video" aria-label="Lookbook teaser">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C200,160 420,210 650,180 C900,150 1100,210 1300,180 C1500,150 1600,200 1600,200 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C200,160 420,210 650,180 C900,150 1100,210 1300,180 C1500,150 1600,200" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">09</p>
+        <h1>Lookbook — Motion Tease</h1>
+        <div class="product-box">Cinematic Teaser</div>
+        <button class="buy-btn" data-prod="teaser" aria-haspopup="dialog" aria-label="Play Cinematic Teaser">Play Teaser</button>
+      </div>
+    </section>
+
+    <section class="section s11" id="s-archive-2" aria-label="Past seasons">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C160,200 360,170 560,190 C760,210 980,160 1200,190 C1400,220 1600,160 1600,160 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C160,200 360,170 560,190 C760,210 980,160 1200,190 C1400,220 1600,160" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">10</p>
+        <h1>Studio — Past Seasons</h1>
+        <div class="product-box">Archive Pieces</div>
+        <button class="buy-btn" data-prod="archive" aria-haspopup="dialog" aria-label="View Studio Archive">View Archive</button>
+      </div>
+    </section>
+
+    <section class="section s12" id="s-contact" aria-label="Join the drop">
+      <svg class="peel-svg" viewBox="0 0 1600 240" preserveAspectRatio="none" aria-hidden="true">
+        <path class="peel-path peel-fill" d="M0,220 C160,180 360,155 560,185 C760,215 980,160 1200,190 C1400,220 1600,170 1600,170 L1600,240 L0,240 Z" fill="url(#peelGradient)"></path>
+        <path class="peel-path peel-stroke" d="M0,220 C160,180 360,155 560,185 C760,215 980,160 1200,190 C1400,220 1600,170" fill="none" stroke="rgba(0,0,0,0.12)"></path>
+      </svg>
+
+      <div class="content">
+        <p class="eyebrow">FINAL</p>
+        <h1>Join the Drop</h1>
+        <p style="margin-top:12px; font-weight:700; opacity:.95">Sign up for release alerts, selection committee access, and collab previews.</p>
+        <button class="buy-btn" style="background:var(--accent); color:var(--text-dark); border:none" data-prod="waitlist" aria-haspopup="dialog" aria-label="Join Waitlist for Drops">Join Waitlist</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal / Lightbox -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" aria-describedby="modal-sub">
+    <div class="modal-card" role="document">
+      <button class="close" aria-label="Close modal">&times;</button>
+      <div class="meta">
+        <div class="thumb" id="modal-thumb">HOOD</div>
+        <div>
+          <h2 id="modal-title">Graphic Hoodie Collection</h2>
+          <p id="modal-sub" style="opacity:.9; font-weight:700;">Limited Edition Text Designs</p>
+        </div>
+      </div>
+      <div id="modal-body" style="line-height:1.5; margin-top:8px; color:inherit;">
+        <p>Our limited edition graphic hoodies feature unique text designs printed on heavy 420gsm fleece.</p>
+        
+        <h3 style="margin-top: 20px;">Available Designs:</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 15px;">
+          <div style="background: #1a1a2e; padding: 15px; border-radius: 8px; text-align: center;">
+            <strong>River Sea Hoodie</strong><br>
+            <span style="font-size: 12px; opacity: 0.8;">"FROM THE RIVER TO THE SEA"</span>
+          </div>
+          <div style="background: #0f3460; padding: 15px; border-radius: 8px; text-align: center;">
+            <strong>Jigsaw Puzzle Hoodie</strong><br>
+            <span style="font-size: 12px; opacity: 0.8;">New York / Life is like a jigsaw puzzle</span>
+          </div>
+          <div style="background: #16213e; padding: 15px; border-radius: 8px; text-align: center;">
+            <strong>Literary Hoodie</strong><br>
+            <span style="font-size: 12px; opacity: 0.8;">"heaven pardon me cried edmon"</span>
+          </div>
+        </div>
+        
+        <p style="margin-top: 20px;"><strong>Fabric:</strong> 420gsm loopback fleece. <strong>Fit:</strong> Relaxed, drop shoulder. <strong>Colors:</strong> Black only.</p>
+        <p><strong>Sizes:</strong> S, M, L, XL</p>
+        <p><strong>Care:</strong> Machine wash cold, tumble dry low</p>
+        
+        <div class="size-selector" style="margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="size-btn" data-size="S" style="padding: 8px 15px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: inherit; border-radius: 5px; cursor: pointer;">S</button>
+          <button class="size-btn" data-size="M" style="padding: 8px 15px; border: 1px solid var(--accent); background: var(--accent); color: var(--text-dark); border-radius: 5px; cursor: pointer;">M</button>
+          <button class="size-btn" data-size="L" style="padding: 8px 15px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: inherit; border-radius: 5px; cursor: pointer;">L</button>
+          <button class="size-btn" data-size="XL" style="padding: 8px 15px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: inherit; border-radius: 5px; cursor: pointer;">XL</button>
+        </div>
+        
+        <button id="add-to-cart" class="buy-btn" style="margin-top: 10px; background: var(--accent); color: var(--text-dark); width: 100%;">Add to Cart — $89.99</button>
+      </div>
+      
+      <!-- Social sharing buttons -->
+      <div class="social-share">
+        <button id="share-twitter" aria-label="Share on Twitter">
+          <span>Twitter</span>
+        </button>
+        <button id="share-facebook" aria-label="Share on Facebook">
+          <span>Facebook</span>
+        </button>
+        <button id="share-pinterest" aria-label="Share on Pinterest">
+          <span>Pinterest</span>
+        </button>
+      </div>
+      
+      <div style="display:flex; gap:12px; margin-top:18px; align-items:center;">
+        <a id="modal-shop" class="buy-btn" href="#" role="button" aria-label="Shop this product">Shop Collection</a>
+        <button id="modal-close-cta" class="buy-btn" style="background:transparent;" aria-label="Close modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ================== Canvas parallax visual ================== */
+    (function(){
+      const canvas = document.getElementById('bg-canvas');
+      const ctx = canvas.getContext && canvas.getContext('2d');
+      if(!ctx) return;
+
+      let W = canvas.width = innerWidth;
+      let H = canvas.height = innerHeight;
+      const circles = [];
+      const CNT = Math.max(6, Math.floor(Math.min(W,H) / 120));
+
+      // create layered circles with different depth
+      for(let i=0;i<CNT;i++){
+        circles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          r: 40 + Math.random()*240,
+          hue: 180 + Math.random()*220,
+          sat: 60 + Math.random()*20,
+          light: 45 + Math.random()*20,
+          depth: 0.12 + Math.random()*0.9,
+          vx: (Math.random()-0.5) * 0.01,
+          vy: (Math.random()-0.5) * 0.01
+        });
+      }
+
+      let mx = W/2, my = H/2, scrollY = 0;
+
+      window.addEventListener('mousemove', (e) => { mx = e.clientX; my = e.clientY; });
+      window.addEventListener('resize', () => {
+        W = canvas.width = innerWidth; H = canvas.height = innerHeight;
+      });
+      
+      let scrollTimeout;
+      window.addEventListener('scroll', () => { 
+        scrollY = pageYOffset || document.documentElement.scrollTop;
+        // Debounce scroll events
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          updateURLHash();
+        }, 100);
+      });
+
+      function draw(){
+        ctx.clearRect(0,0,W,H);
+        // subtle gradient backdrop
+        const g = ctx.createLinearGradient(0,0,W,H);
+        g.addColorStop(0, 'rgba(6,10,25,0.4)');
+        g.addColorStop(1, 'rgba(2,6,23,0.55)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0,0,W,H);
+
+        for(let c of circles){
+          // parallax motion based on mouse + scroll
+          const dx = (mx - W/2) * 0.002 * c.depth;
+          const dy = (my - H/2) * 0.002 * c.depth + (scrollY * 0.02 * c.depth);
+          c.x += (Math.sin((Date.now()/6000 + c.depth*5)) * 0.25) + c.vx;
+          c.y += (Math.cos((Date.now()/8000 + c.depth*7)) * 0.25) + c.vy;
+
+          const grad = ctx.createRadialGradient(c.x - dx, c.y - dy, c.r*0.05, c.x - dx, c.y - dy, c.r);
+          const color = `hsl(${c.hue} ${c.sat}% ${c.light}%)`;
+          grad.addColorStop(0, color);
+          grad.addColorStop(0.55, color.replace('%)', '%, 0.55)'));
+          grad.addColorStop(1, color.replace('%)', '%, 0.03)'));
+
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(c.x - dx, c.y - dy, c.r, 0, Math.PI*2);
+          ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        requestAnimationFrame(draw);
+      }
+      
+      // Hide loading overlay when canvas is ready
+      setTimeout(() => {
+        const loadingOverlay = document.getElementById('loading');
+        if (loadingOverlay) {
+          loadingOverlay.style.opacity = '0';
+          setTimeout(() => {
+            loadingOverlay.style.display = 'none';
+          }, 500);
+        }
+      }, 800);
+      
+      requestAnimationFrame(draw);
+    })();
+
+    /* ================== URL Hash Navigation ================== */
+    function updateURLHash() {
+      const sections = Array.from(document.querySelectorAll('.section'));
+      const activeSection = sections.find(s => s.classList.contains('active'));
+      if (activeSection) {
+        const hash = activeSection.id;
+        if (history.replaceState) {
+          history.replaceState(null, null, `#${hash}`);
+        }
+      }
+    }
+
+    // Handle initial hash or hash change
+    function scrollToHash() {
+      const hash = window.location.hash.substring(1);
+      if (hash) {
+        const element = document.getElementById(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }
+
+    window.addEventListener('load', scrollToHash);
+    window.addEventListener('hashchange', scrollToHash);
+
+    /* ================== Intersection observer for active state & progress ================== */
+    (function(){
+      const sections = Array.from(document.querySelectorAll('.section'));
+      const progressBarFill = document.querySelector('.progress > i');
+      const ariaLive = document.getElementById('aria-live');
+
+      if (!('IntersectionObserver' in window)) {
+        sections.forEach((s,i) => { if(i===0) s.classList.add('active'); });
+        return;
+      }
+
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const el = entry.target;
+          if(entry.intersectionRatio > 0.48){
+            el.classList.add('active');
+            const index = sections.indexOf(el);
+            const pct = Math.round(((index + 1) / sections.length) * 100);
+            if (progressBarFill) progressBarFill.style.height = pct + '%';
+            
+            // Update ARIA live region
+            if (ariaLive) {
+              const title = el.querySelector('h1')?.textContent || 'Section';
+              ariaLive.textContent = `${title} activated`;
+            }
+          } else {
+            el.classList.remove('active');
+          }
+        });
+      }, { threshold: [0, 0.48, 0.75, 1] });
+
+      sections.forEach(s => io.observe(s));
+    })();
+
+    /* ================== Hoodies Interaction ================== */
+    (function(){
+      // Make hoodie items clickable
+      document.querySelectorAll('.hoodie-item').forEach((item, index) => {
+        item.style.cursor = 'pointer';
+        item.addEventListener('click', function() {
+          const designs = [
+            {
+              name: "River Sea Hoodie",
+              text: "FROM THE RIVER TO THE SEA",
+              description: "Minimalist text design with bold typography",
+              price: "$89.99"
+            },
+            {
+              name: "Jigsaw Puzzle Hoodie", 
+              text: "New York / Life is like a jigsaw puzzle...",
+              description: "Philosophical text design with urban theme",
+              price: "$89.99"
+            },
+            {
+              name: "Literary Hoodie",
+              text: "heaven pardon me cried edmon...",
+              description: "Literary excerpt design with classic typography",
+              price: "$89.99"
+            }
+          ];
+          
+          const design = designs[index];
+          const modal = document.getElementById('modal');
+          const modalTitle = document.getElementById('modal-title');
+          const modalSub = document.getElementById('modal-sub');
+          const modalBody = document.getElementById('modal-body');
+          
+          modalTitle.textContent = design.name;
+          modalSub.textContent = design.price;
+          modalBody.innerHTML = `
+            <p><strong>Design:</strong> ${design.text}</p>
+            <p><strong>Description:</strong> ${design.description}</p>
+            <p><strong>Fabric:</strong> 420gsm loopback fleece</p>
+            <p><strong>Fit:</strong> Relaxed, drop shoulder</p>
+            <p><strong>Colors:</strong> Black</p>
+            <p><strong>Sizes:</strong> S, M, L, XL</p>
+            
+            <div class="size-selector" style="margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="size-btn" data-size="S" style="padding: 8px 15px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: inherit; border-radius: 5px; cursor: pointer;">S</button>
+              <button class="size-btn active" data-size="M" style="padding: 8px 15px; border: 1px solid var(--accent); background: var(--accent); color: var(--text-dark); border-radius: 5px; cursor: pointer;">M</button>
+              <button class="size-btn" data-size="L" style="padding: 8px 15px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: inherit; border-radius: 5px; cursor: pointer;">L</button>
+              <button class="size-btn" data-size="XL" style="padding: 8px 15px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: inherit; border-radius: 5px; cursor: pointer;">XL</button>
+            </div>
+            
+            <button id="add-to-cart-hoodie" class="buy-btn" style="margin-top: 10px; background: var(--accent); color: var(--text-dark); width: 100%;">Add to Cart — ${design.price}</button>
+          `;
+          
+          modal.classList.add('open');
+          modal.setAttribute('aria-hidden', 'false');
+          document.body.style.overflow = 'hidden';
+          
+          // Set focus to modal
+          setTimeout(() => modal.querySelector('button, [href]').focus(), 100);
+          
+          // Add size selection
+          modalBody.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              modalBody.querySelectorAll('.size-btn').forEach(b => {
+                b.style.border = '1px solid rgba(255,255,255,0.2)';
+                b.style.background = 'transparent';
+                b.style.color = 'inherit';
+                b.classList.remove('active');
+              });
+              this.style.border = `1px solid var(--accent)`;
+              this.style.background = 'var(--accent)';
+              this.style.color = 'var(--text-dark)';
+              this.classList.add('active');
+            });
+          });
+          
+          // Add to cart functionality
+          const addToCartBtn = modalBody.querySelector('#add-to-cart-hoodie');
+          if (addToCartBtn) {
+            addToCartBtn.addEventListener('click', function() {
+              const selectedSize = modalBody.querySelector('.size-btn.active')?.dataset.size || 'M';
+              alert(`Added ${design.name} (Size: ${selectedSize}) to cart!`);
+              
+              // In a real implementation, you would add to cart here
+              // addToCart(design.id, selectedSize, 1);
+              
+              // Close modal after adding to cart
+              modal.classList.remove('open');
+              modal.setAttribute('aria-hidden', 'true');
+              document.body.style.overflow = '';
+            });
+          }
+        });
+      });
+    })();
+
+    /* ================== Modal / lightbox wiring & product data ================== */
+    (function(){
+      const productData = {
+        hoodie: {
+          title: "Graphic Hoodie Collection",
+          sub: "Limited Edition Text Designs",
+          thumb: "HOOD",
+          body: `<p>Our limited edition graphic hoodies feature unique text designs printed on heavy 420gsm fleece.</p>
+                 <p><strong>Available designs:</strong> River Sea, Jigsaw Puzzle, Literary</p>
+                 <p><strong>Price:</strong> $89.99 each</p>`,
+          shop: "#/collection/hoodies"
+        },
+        tote: {
+          title: "Canvas Tote + Leather Tag",
+          sub: "Reinforced handle — Vegetable tanned tag",
+          thumb: "TOTE",
+          body: `<p>Heavy canvas tote built for everyday. Trimmed with a small leather identification tag. Perfect for market runs & studio carry.</p>`,
+          shop: "#/product/tote"
+        },
+        beanie: {
+          title: "Ribbed Beanie",
+          sub: "Merino blend — 12 gauge rib",
+          thumb: "BEAN",
+          body: `<p>Soft two-tone rib with low profile. Knitted in a merino blend for warmth without weight.</p>`,
+          shop: "#/product/beanie"
+        },
+        jacket: {
+          title: "Technical Shell Jacket",
+          sub: "Water-resistant — Packable hood",
+          thumb: "JKT",
+          body: `<p>Cut for movement with taped seams and articulated sleeves. Packable into the chest pocket for travel-ready convenience.</p>`,
+          shop: "#/product/jacket"
+        },
+        slides: {
+          title: "Minimal Studio Slides",
+          sub: "Dual-density foam — Molded arch",
+          thumb: "SLD",
+          body: `<p>Comfort-focused slide with contoured footbed and anti-slip outsole. Clean silhouette, corespun straps.</p>`,
+          shop: "#/product/slides"
+        },
+        capsule: {
+          title: "One-off Capsule",
+          sub: "Unique drops — Artist editions",
+          thumb: "CAP",
+          body: `<p>Short run capsule made in collaboration with guest artists. Each drop will be announced in advance to waitlist members.</p>`,
+          shop: "#/product/capsule"
+        },
+        collab: {
+          title: "Studio x Guest — Collab",
+          sub: "Limited edition collaborative pieces",
+          thumb: "COL",
+          body: `<p>Designed with our guest artist; pieces feature custom artwork and alternate finishing details.</p>`,
+          shop: "#/product/collab"
+        },
+        teaser: {
+          title: "Cinematic Teaser",
+          sub: "Motion lookbook — 00:45",
+          thumb: "VID",
+          body: `<p><em>Play the 45s cinematic tease (inline).</em></p><div style="margin-top:12px;background:#000;border-radius:8px;padding:14px;color:#fff;">Video placeholder — replace with embed or source.</div>`,
+          shop: "#/video/teaser"
+        },
+        archive: {
+          title: "Archive Pieces",
+          sub: "Past seasons — Reference",
+          thumb: "ARC",
+          body: `<p>Explore a curated selection of past-season favorites and reference pieces for design study.</p>`,
+          shop: "#/archive"
+        },
+        waitlist: {
+          title: "Join Waitlist",
+          sub: "Be first for drops & collabs",
+          thumb: "JOIN",
+          body: `<p>Enter your email to join the waitlist and get early access to drops, collabs, and the selection portal.</p><form style="margin-top:10px"><input placeholder="Email address" type="email" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);width:60%"><button style="margin-left:8px;padding:10px 14px;border-radius:8px;background:var(--accent);border:none;color:#111;font-weight:800">Join</button></form>`,
+          shop: "#/waitlist"
+        }
+      };
+
+      const modal = document.getElementById('modal');
+      const modalTitle = document.getElementById('modal-title');
+      const modalSub = document.getElementById('modal-sub');
+      const modalBody = document.getElementById('modal-body');
+      const modalThumb = document.getElementById('modal-thumb');
+      const modalShop = document.getElementById('modal-shop');
+      const closeBtn = modal.querySelector('.close');
+      const closeCta = document.getElementById('modal-close-cta');
+      
+      // Social sharing
+      const shareTwitter = document.getElementById('share-twitter');
+      const shareFacebook = document.getElementById('share-facebook');
+      const sharePinterest = document.getElementById('share-pinterest');
+
+      let currentProduct = null;
+
+      function openModal(key){
+        const pd = productData[key] || null;
+        if(!pd) return;
+        currentProduct = pd;
+        
+        modalTitle.textContent = pd.title;
+        modalSub.textContent = pd.sub;
+        modalThumb.textContent = pd.thumb;
+        modalBody.innerHTML = pd.body;
+        modalShop.href = pd.shop;
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        
+        // Set focus to modal
+        setTimeout(() => modal.querySelector('button, [href]').focus(), 100);
+        
+        // Update social sharing URLs
+        const shareUrl = encodeURIComponent(window.location.href);
+        const shareText = encodeURIComponent(`Check out ${pd.title} - ${pd.sub}`);
+        
+        shareTwitter.onclick = () => {
+          window.open(`https://twitter.com/intent/tweet?url=${shareUrl}&text=${shareText}`, '_blank');
+        };
+        
+        shareFacebook.onclick = () => {
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`, '_blank');
+        };
+        
+        sharePinterest.onclick = () => {
+          window.open(`https://pinterest.com/pin/create/button/?url=${shareUrl}&description=${shareText}`, '_blank');
+        };
+      }
+
+      function closeModal(){
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        currentProduct = null;
+      }
+
+      document.addEventListener('click', (ev) => {
+        const t = ev.target;
+        if(t.matches('.buy-btn[data-prod]') || t.closest('.buy-btn[data-prod]')){
+          const btn = t.matches('[data-prod]') ? t : t.closest('[data-prod]');
+          const key = btn.getAttribute('data-prod');
+          openModal(key);
+        }
+      });
+
+      closeBtn.addEventListener('click', closeModal);
+      closeCta.addEventListener('click', closeModal);
+
+      // close on overlay click (but not when clicking inside card)
+      modal.addEventListener('click', (e) => {
+        if(e.target === modal) closeModal();
+      });
+
+      // keyboard accessibility: Esc to close
+      window.addEventListener('keydown', (e) => {
+        if(e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+      });
+    })();
+
+    /* ================== Palette switcher wiring ================== */
+    (function(){
+      const btnDefault = document.getElementById('btn-default');
+      const btnNeon = document.getElementById('btn-neon');
+      const btnPastel = document.getElementById('btn-pastel');
+      const btnMono = document.getElementById('btn-mono');
+
+      const buttons = [btnDefault, btnNeon, btnPastel, btnMono];
+
+      function setPalette(name){
+        document.body.classList.remove('palette--neon','palette--pastel','palette--mono');
+        if(name === 'neon') document.body.classList.add('palette--neon');
+        if(name === 'pastel') document.body.classList.add('palette--pastel');
+        if(name === 'mono') document.body.classList.add('palette--mono');
+        // update active state
+        buttons.forEach(b => b.classList.remove('active'));
+        if(name==='neon') btnNeon.classList.add('active');
+        else if(name==='pastel') btnPastel.classList.add('active');
+        else if(name==='mono') btnMono.classList.add('active');
+        else btnDefault.classList.add('active');
+      }
+
+      btnDefault.addEventListener('click', () => setPalette('default'));
+      btnNeon.addEventListener('click', () => setPalette('neon'));
+      btnPastel.addEventListener('click', () => setPalette('pastel'));
+      btnMono.addEventListener('click', () => setPalette('mono'));
+    })();
+
+    /* ================== Feature Detection ================== */
+    (function(){
+      // Backdrop filter support
+      if (!CSS.supports('backdrop-filter', 'blur(6px)')) {
+        document.body.classList.add('no-backdrop');
+      }
+    })();
+
+    /* ================== Swipe gestures for mobile ================== */
+    (function(){
+      let touchStartY = 0;
+      let touchEndY = 0;
+      
+      document.addEventListener('touchstart', e => {
+        touchStartY = e.changedTouches[0].screenY;
+      }, { passive: true });
+      
+      document.addEventListener('touchend', e => {
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipe();
+      }, { passive: true });
+      
+      function handleSwipe() {
+        const sections = Array.from(document.querySelectorAll('.section'));
+        const activeIndex = sections.findIndex(s => s.classList.contains('active'));
+        
+        if (touchEndY < touchStartY - 50) {
+          // Swipe up - next section
+          const nextIndex = Math.min(sections.length - 1, activeIndex + 1);
+          sections[nextIndex].scrollIntoView({ behavior: 'smooth' });
+        } else if (touchEndY > touchStartY + 50) {
+          // Swipe down - previous section
+          const prevIndex = Math.max(0, activeIndex - 1);
+          sections[prevIndex].scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    })();
+
+    /* ================== Keyboard quick nav for demo ================== */
+    (function(){
+      const sections = Array.from(document.querySelectorAll('.section'));
+      window.addEventListener('keydown', (e) => {
+        if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+          e.preventDefault();
+          const activeIndex = sections.findIndex(s => s.classList.contains('active'));
+          let nextIndex = activeIndex;
+          if(e.key === 'ArrowDown') nextIndex = Math.min(sections.length - 1, activeIndex + 1);
+          if(e.key === 'ArrowUp') nextIndex = Math.max(0, activeIndex - 1);
+          sections[nextIndex].scrollIntoView({behavior:'smooth'});
+        }
+      });
+    })();
+
+    /* ================== Lazy load images ================== */
+    (function(){
+      document.querySelectorAll('.product-box img').forEach(img => {
+        img.loading = 'lazy';
+        // Add error handling
+        img.onerror = function() {
+          this.style.display = 'none';
+          this.parentElement.textContent = this.alt || 'Product Image';
+        };
+      });
+    })();
+  </script>
+</body>
+</html>
